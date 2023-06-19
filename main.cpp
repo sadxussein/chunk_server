@@ -1,26 +1,9 @@
 // Only commenting lines which are not selfexplanatory in their mnemonic.
-
-#include <iostream>
-#include <algorithm>
-#include <thread>
-#include <mutex>	// mutual exclusion; provides access to protected and shared resources
-#include <vector>
-#include <string>
-#include <cstring>
-#include <cstdlib>
-#include <cstdio>
-#include <unistd.h>	// posix syscalls
-#include <sys/types.h>	// unix types for syscalls
-#include <sys/socket.h>	// unix sockets
-#include <netinet/in.h>	// unix types for network
-
-using namespace std;
-
-const int MAX_CLIENTS = 10;
-const int BUFFER_SIZE = 1500;
+#include "chunk_server.h"
 
 vector<int> clients;
 mutex clients_mutex;
+vector<string> chat;
 
 void handle_client(int client_socket) {
     char buffer[BUFFER_SIZE];
@@ -30,9 +13,10 @@ void handle_client(int client_socket) {
     ssize_t bytes_read = 0;	// type used for size representation of buffer/array size
     while ((bytes_read = recv(client_socket, buffer, BUFFER_SIZE - 1, 0)) > 0) {	// while we are receiving more than zero bytes from client
         buffer[bytes_read] = '\0';	// adding 'end of line' to recieved bytes array
-        cout << "Received: " << buffer << endl;	// printing client data        
+        cout << "Received: " << buffer << endl;	// printing client data
+		chat.push_back(buffer);	// adding message to chat array
         string response = "Hello, client!";
-        send(client_socket, response.c_str(), response.size(), 0); // send a response to the client      
+        send(client_socket, response.c_str(), response.size(), 0); // send a response to the client
         memset(buffer, 0, BUFFER_SIZE); // resetting the buffer
     }
 
@@ -46,13 +30,12 @@ void handle_client(int client_socket) {
     // --- Remove the client from the list of connected clients ---
     clients_mutex.lock();	// by locking we make sure that only one thread is able to execute next command
     clients.erase(remove(clients.begin(), clients.end(), client_socket), clients.end());	// remove function does not remove elements, only moving them to the end of the vector; returns iterator which points to first client_socket element. After that erase removes elements starting from remove iterator to the end of the vector
-    clients_mutex.unlock();
-    
+    clients_mutex.unlock();    
     close(client_socket);	// close the client socket
 }
 
 int main(int argc, char* argv[]) {
-    // --- Create the server socket ---
+    /*// --- Create the server socket ---
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);	// AF_INET = tpc/ip, SOCK_STREAM = tcp, 0 = protocol will be selected by the system automatically; int here is the file descriptor
     if (server_socket < 0) {
         cerr << "Error creating server socket" << endl;
@@ -75,28 +58,61 @@ int main(int argc, char* argv[]) {
     if (listen(server_socket, MAX_CLIENTS) < 0) {
         cerr << "Error listening for incoming connections" << endl;
         return -1;
-    }
+    }*/
+
+	// --- Handling arguments passed by admin for server execution, making possibility for creating multiple ports for server ---
+	if (argc < 3) {
+		cerr << "Error parsing arguments, should be like ./a.out tcp_port udp_port" << endl;
+		return -1;
+	}
+	
+	// --- Parsing arguments to port numbers
+	int tcp_port = atoi(argv[1]);
+	int udp_port = atoi(argv[2]);
+
+	chunk_server server;
+	if (server.init_socket(SOCK_STREAM, tcp_port) < 0/* || server.init_socket(SOCK_DGRAM, udp_port) < 0*/) {
+		return -1;
+	}
 
     // --- Accept new clients in an infinite loop ---
     while (true) {
-        // --- Wait for a client to connect ---
+        /*// --- Wait for a client to connect ---
         int client_socket = accept(server_socket, NULL, NULL);	// we don't care about client address information, hence the NULL
         if (client_socket < 0) {
             cerr << "Error accepting client connection" << endl;
             continue; // try again
-        }
+        }*/
+		
+		// --- Wait for a client to connect ---
+        for (int& socket : *server.get_sockets()) {	// we go through all created sockets
+			int client_socket = accept(socket, NULL, NULL);	// we don't care about client address information, hence the NULL
+			if (client_socket < 0) {
+				cerr << "Error accepting client connection" << endl;
+				continue; // try again
+			}
+			
+			// --- Add the new client to the list of connected clients ---
+			clients_mutex.lock();
+			clients.push_back(client_socket);
+			clients_mutex.unlock();
 
-        // --- Add the new client to the list of connected clients ---
+			// --- Spawn a new thread to handle this client ---
+			thread t(handle_client, client_socket);
+			t.detach();
+		}		
+
+        /*// --- Add the new client to the list of connected clients ---
         clients_mutex.lock();
         clients.push_back(client_socket);
         clients_mutex.unlock();
 
         // --- Spawn a new thread to handle this client ---
         thread t(handle_client, client_socket);
-        t.detach();
+        t.detach();*/
     }
+	
+	delete server;
     
-    close(server_socket); // сlose the server socket
-
     return 0;	// ASCII standart requirment
 }
