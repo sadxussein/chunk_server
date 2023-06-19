@@ -1,6 +1,7 @@
 // Only commenting lines which are not selfexplanatory in their mnemonic.
 
 #include <iostream>
+#include <algorithm>
 #include <thread>
 #include <mutex>	// mutual exclusion; provides access to protected and shared resources
 #include <vector>
@@ -81,7 +82,7 @@ int main(int argc, char* argv[]) {
         // --- Wait for a client to connect ---
         int client_socket = accept(server_socket, NULL, NULL);	// we don't care about client address information, hence the NULL
         if (client_socket < 0) {
-            cerr << "Error accepting client connection" << std::endl;
+            cerr << "Error accepting client connection" << endl;
             continue; // try again
         }
 
