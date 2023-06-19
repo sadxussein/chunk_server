@@ -62,16 +62,16 @@ int main(int argc, char* argv[]) {
 
 	// --- Handling arguments passed by admin for server execution, making possibility for creating multiple ports for server ---
 	if (argc < 3) {
-		cerr << "Error parsing arguments, should be like ./a.out tcp_port udp_port" << endl;
+		cerr << "Error parsing arguments, should be like 'server tcp_port udp_port'" << endl;
 		return -1;
 	}
 	
-	// --- Parsing arguments to port numbers
+	// --- Parsing arguments to port numbers ---
 	int tcp_port = atoi(argv[1]);
 	int udp_port = atoi(argv[2]);
 
 	chunk_server server;
-	if (server.init_socket(SOCK_STREAM, tcp_port) < 0/* || server.init_socket(SOCK_DGRAM, udp_port) < 0*/) {
+	if (server.init_socket(SOCK_STREAM, tcp_port) < 0 || server.init_socket(SOCK_DGRAM, udp_port) < 0) {    // init_socket creates sockets, binds them with internal ip and provided port, then starts listening on them
 		return -1;
 	}
 
@@ -85,22 +85,22 @@ int main(int argc, char* argv[]) {
         }*/
 		
 		// --- Wait for a client to connect ---
-        for (int& socket : *server.get_sockets()) {	// we go through all created sockets
-			int client_socket = accept(socket, NULL, NULL);	// we don't care about client address information, hence the NULL
-			if (client_socket < 0) {
-				cerr << "Error accepting client connection" << endl;
-				continue; // try again
-			}
+		int tcp_socket = accept(server.get_tcp_socket(), NULL, NULL);	// we don't care about client address information, hence the NULL
+		if (tcp_socket < 0) {
+			cerr << "Error accepting client connection" << endl;
+			continue; // try again
+		}
 			
-			// --- Add the new client to the list of connected clients ---
-			clients_mutex.lock();
-			clients.push_back(client_socket);
-			clients_mutex.unlock();
+		// --- Add the new client to the list of connected clients ---
+		clients_mutex.lock();
+		clients.push_back(tcp_socket);
+		clients_mutex.unlock();
 
-			// --- Spawn a new thread to handle this client ---
-			thread t(handle_client, client_socket);
-			t.detach();
-		}		
+		// --- Spawn a new thread to handle this client ---
+		thread t(handle_client, tcp_socket);
+		t.detach();
+
+        int udp_socket = 
 
         /*// --- Add the new client to the list of connected clients ---
         clients_mutex.lock();
@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
         t.detach();*/
     }
 	
-	delete server;
+	delete &server;
     
     return 0;	// ASCII standart requirment
 }

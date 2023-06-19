@@ -3,9 +3,9 @@
 chunk_server::chunk_server() {
 }
 
-int chunk_server::init_socket(int type, int port) {	
+void chunk_server::set_socket(int type, int port) {	
 	// --- Create the server socket ---
-    int server_socket = socket(AF_INET, type, 0);	// AF_INET = internet tpc_ip, type = tcp/udp (SOCK_STREAM, SOCK_DGRAM, 0 = protocol will be selected by the system automatically; int here is the file descriptor
+    int server_socket = socket(AF_INET, type, 0);	// AF_INET = internet tpc_ip, SOCK_STREAM || SOCK_DGRAM = tcp || udp, 0 = protocol will be selected by the system automatically; int here is the file descriptor
     if (server_socket < 0) {
         cerr << "Error creating server socket" << endl;
         return -1;
@@ -23,22 +23,27 @@ int chunk_server::init_socket(int type, int port) {
     }
 	
 	// --- Listen for incoming connections ---
-	if (listen(server_socket, MAX_CLIENTS) < 0) {
-        cerr << "Error listening for incoming connections" << endl;
-        return -1;
+    if (type == SOCK_STREAM) {  // set attribute according to function input
+        tcp_socket = server_socket;
+        if (listen(server_socket, MAX_CLIENTS) < 0) {
+            cerr << "Error listening for incoming connections" << endl;
+            return -1;
+        }
     }
-	
-	sockets.push_back(server_socket);
-	
-	return server_socket;
+    else if (type == SOCK_DGRAM) {
+        udp_socket = server_socket;
+    }	
 }
 
-vector<int>* chunk_server::get_sockets() {
-	return &sockets;
-}	
+int chunk_server::get_tcp_socket() {
+    return tcp_socket;
+}
 
-chunk_server::~chunk_server() {
-	for (int socket : sockets) {
-		close(socket);
-	}
+int chunk_server::get_udp_socket() {
+    return udp_socket;
+}
+
+chunk_server::~chunk_server() {	
+	close(tcp_socket);
+    clost(udp_socket);
 }
