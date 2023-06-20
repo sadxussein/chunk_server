@@ -3,6 +3,7 @@
 #include <thread>
 #include <mutex>	// mutual exclusion; provides access to protected and shared resources
 #include <vector>
+#include <map>
 #include <string>
 #include <cstring>
 #include <cstdlib>
@@ -19,12 +20,19 @@ const int BUFFER_SIZE = 1500;
 
 class chunk_server {
 public:		
+	map<int, sockaddr_in> clients_addresses;
+	vector<int> clients;
+
 	chunk_server();
 	void set_socket(int type, int port);
 	int get_tcp_socket();
 	int get_udp_socket();
+	void handle_tcp_client();
+	void handle_udp_client();
 	~chunk_server();	
 
 private:
-	int tcp_socket, udp_socket;
+	int tcp_socket, udp_socket;		
+	vector<string> chat;	// temporary chat	
+	mutex clients_mutex;
 };

@@ -1,10 +1,6 @@
 // Only commenting lines which are not selfexplanatory in their mnemonic.
 #include "chunk_server.h"
 
-vector<int> clients;
-mutex clients_mutex;
-vector<string> chat;
-
 void handle_client(int client_socket) {
     char buffer[BUFFER_SIZE];
     memset(buffer, 0, BUFFER_SIZE);	// filling buffer with zeroes, we dont need memory trash in there
@@ -85,22 +81,23 @@ int main(int argc, char* argv[]) {
         }*/
 		
 		// --- Wait for a client to connect ---
-		int tcp_socket = accept(server.get_tcp_socket(), NULL, NULL);	// we don't care about client address information, hence the NULL
+		struct sockaddr_in client_addr;
+		socklen_t addr_size = sizeof(client_addr);
+		int tcp_socket = accept(server.get_tcp_socket(), (struct sockaddr *)&client_addr, &addr_size);	// we get client address info from accept; tcp_socket stores file descriptor
 		if (tcp_socket < 0) {
 			cerr << "Error accepting client connection" << endl;
 			continue; // try again
 		}
-			
+
 		// --- Add the new client to the list of connected clients ---
-		clients_mutex.lock();
-		clients.push_back(tcp_socket);
-		clients_mutex.unlock();
+		server.clients_mutex.lock();
+		server.clients.push_back(tcp_socket);	// store file descriptor which now operates with client
+		server.clients_addresses.insert(make_pair(tcp_socket, client_addr));	// store client address info for server
+		server.clients_mutex.unlock();
 
 		// --- Spawn a new thread to handle this client ---
-		thread t(handle_client, tcp_socket);
-		t.detach();
-
-        int udp_socket = 
+		thread t(server.handle_tcp_client, tcp_socket);
+		t.detach();        
 
         /*// --- Add the new client to the list of connected clients ---
         clients_mutex.lock();

@@ -43,6 +43,57 @@ int chunk_server::get_udp_socket() {
     return udp_socket;
 }
 
+void chunk_server::handle_tcp_client(int socket) {
+	char buffer[BUFFER_SIZE];
+    memset(buffer, 0, BUFFER_SIZE);	// filling buffer with zeroes, we dont need memory trash in there
+
+    // --- Read data from the client ---
+    ssize_t bytes_read = 0;	// type used for size representation of buffer/array size
+    while ((bytes_read = recv(socket, buffer, BUFFER_SIZE - 1, 0)) > 0) {	// while we are receiving more than zero bytes from client
+        buffer[bytes_read] = '\0';	// adding 'end of line' to recieved bytes array
+        cout << "Received: " << buffer << endl;	// printing client data
+		chat.push_back(buffer);	// adding message to chat array
+        string response = "Hello, client!";
+        send(socket, response.c_str(), response.size(), 0); // send a response to the client
+        memset(buffer, 0, BUFFER_SIZE); // resetting the buffer
+    }
+
+    // --- An error occurred or the client disconnected ---
+    if (bytes_read == 0) {
+        cout << "Client disconnected" << endl;
+    } else {
+        cerr << "Error receiving data from client" << endl;	// standart error output stream
+    }
+
+    // --- Remove the client from the list of connected clients ---
+    clients_mutex.lock();	// by locking we make sure that only one thread is able to execute next command
+    clients.erase(remove(clients.begin(), clients.end(), socket), clients.end());	// remove function does not remove elements, only moving them to the end of the vector; returns iterator which points to first socket element. After that erase removes elements starting from remove iterator to the end of the vector
+    clients_mutex.unlock();
+    close(socket);	// close the client socket
+}
+
+void chunk_server::handle_udp_client(int socket) {
+	char buffer[BUFFER_SIZE];
+    memset(buffer, 0, BUFFER_SIZE);	// filling buffer with zeroes, we dont need memory trash in there
+	
+	ssize_t bytes_read = 0;
+	while ((bytes_read = recvfrom(socket, buffer, BUFFER_SIZE - 1, 0, &clients_addresses[socket], sizeof(clients_addresses[socket]))) > 0) {	// while we are receiving more than zero bytes from client
+        buffer[bytes_read] = '\0';	// adding 'end of line' to recieved bytes array
+        cout << "Received: " << buffer << endl;	// printing client data
+		chat.push_back(buffer);	// adding message to chat array
+        string response = "Hello, client!";
+        sendto(socket, response.c_str(), response.size(), 0, &clients_addresses[socket], sizeof(clients_addresses[socket])); // send a response to the client
+        memset(buffer, 0, BUFFER_SIZE); // resetting the buffer
+    }
+
+    // --- An error occurred or the client disconnected ---
+    if (bytes_read == 0) {
+        cout << "Client disconnected" << endl;
+    } else {
+        cerr << "Error receiving data from client" << endl;	// standart error output stream
+    }
+}
+
 chunk_server::~chunk_server() {	
 	close(tcp_socket);
     clost(udp_socket);
