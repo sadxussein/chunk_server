@@ -2,42 +2,13 @@
 
 #include "chunk_server.h"
 
-/*void handle_client(int client_socket) {
-    char buffer[BUFFER_SIZE];
-    memset(buffer, 0, BUFFER_SIZE);	// filling buffer with zeroes, we dont need memory trash in there
-
-    // --- Read data from the client ---
-    ssize_t bytes_read = 0;	// type used for size representation of buffer/array size
-    while ((bytes_read = recv(client_socket, buffer, BUFFER_SIZE - 1, 0)) > 0) {	// while we are receiving more than zero bytes from client
-        buffer[bytes_read] = '\0';	// adding 'end of line' to recieved bytes array
-        cout << "Received: " << buffer << endl;	// printing client data
-		chat.push_back(buffer);	// adding message to chat array
-        string response = "Hello, client!";
-        send(client_socket, response.c_str(), response.size(), 0); // send a response to the client
-        memset(buffer, 0, BUFFER_SIZE); // resetting the buffer
-    }
-
-    // --- An error occurred or the client disconnected ---
-    if (bytes_read == 0) {
-        cout << "Client disconnected" << endl;
-    } else {
-        cerr << "Error receiving data from client" << endl;	// standart error output stream
-    }
-
-    // --- Remove the client from the list of connected clients ---
-    clients_mutex.lock();	// by locking we make sure that only one thread is able to execute next command
-    clients.erase(remove(clients.begin(), clients.end(), client_socket), clients.end());	// remove function does not remove elements, only moving them to the end of the vector; returns iterator which points to first client_socket element. After that erase removes elements starting from remove iterator to the end of the vector
-    clients_mutex.unlock();    
-    close(client_socket);	// close the client socket
-}*/
-
 /*
  * 1. Handling arguments passed by admin for server execution, making possibility for creating multiple ports for server
  * 2. Parsing arguments to port numbers
  * 3. Creating a pair of sockets, listening both to udp and tcp on parsed ports
  * 4. Accept new clients in an infinite loop
- * 5. Accept and add the new TCP client fd to the list of connected TCP clients
- * 6. Spawn a new thread to handle this TCP client
+ * 5. Accept and add the new TCP client fd to the list of connected TCP clients; then spawn a thread for this client
+ * 6. Create and operate with UDP connection
  */
 int main(int argc, char* argv[]) {
 	// 1. Handling arguments passed by admin for server execution, making possibility for creating multiple ports for server
@@ -65,8 +36,8 @@ int main(int argc, char* argv[]) {
 			continue;	// if we fail on one accept we want to restart the loop
 		}
 		
-		//struct sockaddr_in udp_client_addr;		// UDP client address and other stuff
-		//addr_size = sizeof(udp_client_addr);	// its size
+		// 6. Create and operate with UDP connection
+		server.add_udp_thread();
 	}
 	
 	delete &server;

@@ -20,23 +20,23 @@ const int BUFFER_SIZE = 1500;
 
 class chunk_server {
 public:		
-	map<int, sockaddr_in*> clients_tcp_addresses, clients_udp_addresses;
-	vector<int> clients;
+	map<int, sockaddr_in*> clients_tcp_addresses;		// +
+	vector<sockaddr_in*> clients_udp_addresses;			// ???
 
-	chunk_server();	// +
-	int set_socket(int type, int port);	// +
-	int get_tcp_socket();	// +
-	int get_udp_socket();	// +
-	int accept_tcp_client();	// +
-	void add_udp_client(struct sockaddr* client_addr);	// ???
+	chunk_server();										// +
+	int set_socket(int type, int port);					// +
+	int get_tcp_socket();								// +
+	int get_udp_socket();								// +
+	int accept_tcp_client();							// +
 	void handle_tcp_client(int client_tcp_socket_fd);	// +
-	void handle_udp_client();	// ???
-	void add_threads(int client_tcp_socket_fd); // +
-	~chunk_server();	// +
+	void handle_udp_client();							// ???
+	void add_tcp_thread(int client_tcp_socket_fd); 		// +
+	void add_udp_thread();								// ???
+	~chunk_server();									// +
 
 private:
-	struct sockaddr_in server_address;	// server socket address structure
-	int server_tcp_socket_fd, server_udp_socket_fd;	// main filedescriptors, which fork into client connections fd's
-	vector<string> chat;	// ??? temporary chat
-	mutex clients_mutex;
+	struct sockaddr_in server_address;					// server socket address structure
+	int server_tcp_socket_fd, server_udp_socket_fd;		// main filedescriptors, which fork into client connections fd's
+	vector<string> chat;								// ??? temporary chat
+	mutex clients_mutex;								// thread data separation
 };

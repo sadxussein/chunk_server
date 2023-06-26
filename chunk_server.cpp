@@ -51,15 +51,49 @@ int chunk_server::set_socket(int type,
 	return 0;	// if everything OK return 0
 }
 
-int chunk_server::get_tcp_socket() {
-    return server_tcp_socket_fd;
-}
+/*
+ * add_tcp_client
+ * 1. Accepting pending TCP connections
+ * 2. Storing info about client
+ * 3. Spawn thread for this client
+ */
+int chunk_server::accept_tcp_client() {
+	// 1. Accepting pending TCP connections
+	socklen_t addr_size;
+	struct sockaddr_in tcp_client_addr;		// TCP client address and other stuff
+	addr_size = sizeof(tcp_client_addr);	// its size
+	int client_tcp_socket_fd = accept(this->get_tcp_socket(),	// we get client address info from accept; client_tcp_socket_fd stores file descriptor
+									  (struct sockaddr *) &tcp_client_addr,
+									  &addr_size);	
+	if (client_tcp_socket_fd < 0) {
+		cerr << "Error accepting client connection" << endl;
+		return -1;
+	}
 
-int chunk_server::get_udp_socket() {
-    return server_udp_socket_fd;
+	// 2. Storing info about client
+	clients_mutex.lock();	// locking other threads from accessing following data
+	clients_tcp_addresses.insert(make_pair(client_tcp_socket_fd, 
+										   &tcp_client_addr));	// store fd and client address info for server
+	clients_mutex.unlock();	// unlocking data
+	
+	// 3. Spawn thread for this client
+	chunk_server::add_tcp_thread(client_tcp_socket_fd);
+	
+	return 0;
 }
 
 /*
+ * add_tcp_thread
+ */
+void chunk_server::add_tcp_thread(int client_tcp_socket_fd) {
+	thread t(&chunk_server::handle_tcp_client,	// pointer to function
+				this, 							// object pointer
+				client_tcp_socket_fd);			// function argument
+	t.detach();									// now function will operate detached from others
+}
+
+/*
+ * handle_tcp_client
  * 1. Init buffer for data transmission
  * 2. Read data from the client
  * 3. An error occurred or the client disconnected
@@ -72,7 +106,7 @@ void chunk_server::handle_tcp_client(int client_tcp_socket_fd) {
 		   0,				// with zeroes
 		   BUFFER_SIZE);	// of size of said structure
 
-    // 2. Read data from the client
+    // 2. Read data from the client and send it back
     ssize_t bytes_read = 0;	// type used for size representation of buffer/array size
     while ((bytes_read = recv(client_tcp_socket_fd,	// client file descriptor
 							  buffer,				// our data buffer
@@ -96,79 +130,66 @@ void chunk_server::handle_tcp_client(int client_tcp_socket_fd) {
     }
 
     // 4. Remove the client from the list of connected clients
-    clients_mutex.lock();							// by locking we make sure that only one thread is able to execute next command
+    clients_mutex.lock();								// by locking we make sure that only one thread is able to execute next command
     clients_tcp_addresses.erase(client_tcp_socket_fd);	// remove function does not remove elements, only moving them to the end of the vector; returns iterator which points to first socket element. After that erase removes elements starting from remove iterator to the end of the vector
-    clients_mutex.unlock();							// unlocking data
-    close(client_tcp_socket_fd);					// close the client socket
+    clients_mutex.unlock();								// unlocking data
+    close(client_tcp_socket_fd);						// close the client socket
 }
+
 /*
+ * add_udp_thread
+ */
+void chunk_server::add_udp_thread() {
+	thread t(&chunk_server::handle_udp_client,	// pointer to function
+			 this);							// object pointer
+	t.detach();									// now function will operate detached from others
+}
+
+/*
+ * handle_udp_client
+ * 1. Init buffer and client UDP structure
+ * 2. Read data from the client and send it back
+ * 3. An error occurred or the client disconnected
+ */
 void chunk_server::handle_udp_client() {
+	// 1. Init buffer and client UDP structure
 	char buffer[BUFFER_SIZE];
     memset(buffer, 0, BUFFER_SIZE);	// filling buffer with zeroes, we dont need memory trash in there	
-	int bytes_read = 0;
-	socklen_t addr_len = sizeof(clients_udp_addresses[0]);
+	struct sockaddr_in udp_client_addr;		// UDP client address and other stuff
+	socklen_t addr_len = sizeof(udp_client_addr);	// its size	
 	
-	while (bytes_read = recvfrom(client_socket_fd,	// fd we get from system to communicate with client
-									buffer, 	// our byte buffer, which contains client data
-									BUFFER_SIZE,
-									0, 	// some flags, uniportant right now
-									(struct sockaddr*) &clients_udp_addresses[client_socket_fd],	// here we reference to element of array, containing client connection data (IP, port etc.)
-									&addr_len) > 0) {	// while we are receiving more than zero bytes from client
+	// 2. Read data from the client and send it back
+	int bytes_read = 0;
+	while (bytes_read = recvfrom(this->get_udp_socket(),	// fd we get from system to communicate with client
+								 buffer, 					// our byte buffer, which contains client data
+								 BUFFER_SIZE,				// its size
+								 0, 						// some flags, uniportant right now
+								 (struct sockaddr*) &udp_client_addr,	// here we reference to element of array, containing client connection data (IP, port etc.)
+								 &addr_len) > 0) {		// while we are receiving more than zero bytes from client
         cout << "Received: " << buffer << endl;	// printing client data
-        sendto(client_socket_fd, buffer, BUFFER_SIZE, 0, (struct sockaddr*) &clients_udp_addresses[client_socket_fd], addr_len); // send a response to the client; args are the same as in recvfrom, except addr_len is not pointer
+        sendto(this->get_udp_socket(),	// send a response to the client; args are the same as in recvfrom, except addr_len is not pointer
+			   buffer,
+			   BUFFER_SIZE,
+			   0,
+			   (struct sockaddr*) &udp_client_addr,
+			   addr_len); 
         memset(buffer, 0, BUFFER_SIZE); // resetting the buffer with zeroes
     }
 
-    // --- An error occurred or the client disconnected ---
+    // 3. An error occurred or the client disconnected
     if (bytes_read == 0) {
         cout << "Client disconnected" << endl;
     } else {
         cerr << "Error receiving data from client" << endl;	// standart error output stream
     }
 }
-*/
-/*
- * add_tcp_client
- * 1. Accepting pending TCP connections
- * 2. Storing info about client
- * 3. Spawn thread for this client
- */
-int chunk_server::accept_tcp_client() {
-	// 1. Accepting pending TCP connections
-	socklen_t addr_size;
-	struct sockaddr_in tcp_client_addr;		// TCP client address and other stuff
-	addr_size = sizeof(tcp_client_addr);	// its size
-	int client_tcp_socket_fd = accept(this->get_tcp_socket(),	// we get client address info from accept; client_tcp_socket_fd stores file descriptor
-									  (struct sockaddr *) &tcp_client_addr,
-									  &addr_size);	
-	if (client_tcp_socket_fd < 0) {
-		cerr << "Error accepting client connection" << endl;
-		return -1;
-	}
 
-	// 2. Storing info about client
-	chunk_server::clients_mutex.lock();	// locking other threads from accessing following data
-	chunk_server::clients_tcp_addresses.insert(make_pair(client_tcp_socket_fd, &tcp_client_addr));	// store fd and client address info for server
-	chunk_server::clients_mutex.unlock();	// unlocking data
-	
-	// 3. Spawn thread for this client
-	chunk_server::add_threads(client_tcp_socket_fd);
-	
-	return 0;
+int chunk_server::get_tcp_socket() {
+    return server_tcp_socket_fd;
 }
 
-void chunk_server::add_udp_client(struct sockaddr* client_addr) {
-	
-}
-
-/*
- * add_threads
- */
-void chunk_server::add_threads(int client_tcp_socket_fd) {
-	thread t(&chunk_server::handle_tcp_client,	// pointer to function
-				this, 							// object pointer
-				client_tcp_socket_fd);			// function argument
-	t.detach();									// now function will operate detached from others
+int chunk_server::get_udp_socket() {
+    return server_udp_socket_fd;
 }
 
 chunk_server::~chunk_server() {	
