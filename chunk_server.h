@@ -20,16 +20,19 @@ const int BUFFER_SIZE = 1500;
 
 class chunk_server {
 public:		
-	map<int, sockaddr_in> clients_addresses;
+	map<int, sockaddr*> clients_addresses;
 	vector<int> clients;
 
-	chunk_server();
-	void set_socket(int type, int port);
-	int get_tcp_socket();
-	int get_udp_socket();
-	void handle_tcp_client();
-	void handle_udp_client();
-	~chunk_server();	
+	chunk_server();	// +
+	int set_socket(int type, int port);	// +
+	int get_tcp_socket();	// +
+	int get_udp_socket();	// +
+	void add_tcp_client(int client_tcp_socket, struct sockaddr* client_addr);	// ???
+	void add_udp_client(int client_tcp_socket, struct sockaddr* client_addr);	// ???
+	void handle_tcp_client(int socket);	// ???
+	void handle_udp_client(int socket);	// ???
+	void add_thread(int client_tcp_socket);
+	~chunk_server();	// +
 
 private:
 	int tcp_socket, udp_socket;		

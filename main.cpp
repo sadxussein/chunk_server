@@ -1,7 +1,7 @@
 // Only commenting lines which are not selfexplanatory in their mnemonic.
 #include "chunk_server.h"
 
-void handle_client(int client_socket) {
+/*void handle_client(int client_socket) {
     char buffer[BUFFER_SIZE];
     memset(buffer, 0, BUFFER_SIZE);	// filling buffer with zeroes, we dont need memory trash in there
 
@@ -28,7 +28,7 @@ void handle_client(int client_socket) {
     clients.erase(remove(clients.begin(), clients.end(), client_socket), clients.end());	// remove function does not remove elements, only moving them to the end of the vector; returns iterator which points to first client_socket element. After that erase removes elements starting from remove iterator to the end of the vector
     clients_mutex.unlock();    
     close(client_socket);	// close the client socket
-}
+}*/
 
 int main(int argc, char* argv[]) {
     /*// --- Create the server socket ---
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 	int udp_port = atoi(argv[2]);
 
 	chunk_server server;
-	if (server.init_socket(SOCK_STREAM, tcp_port) < 0 || server.init_socket(SOCK_DGRAM, udp_port) < 0) {    // init_socket creates sockets, binds them with internal ip and provided port, then starts listening on them
+	if (server.set_socket(SOCK_STREAM, tcp_port) < 0 || server.set_socket(SOCK_DGRAM, udp_port) < 0) {    // init_socket creates sockets, binds them with internal ip and provided port, then starts listening on them
 		return -1;
 	}
 
@@ -83,21 +83,17 @@ int main(int argc, char* argv[]) {
 		// --- Wait for a client to connect ---
 		struct sockaddr_in client_addr;
 		socklen_t addr_size = sizeof(client_addr);
-		int tcp_socket = accept(server.get_tcp_socket(), (struct sockaddr *)&client_addr, &addr_size);	// we get client address info from accept; tcp_socket stores file descriptor
+		int tcp_socket = accept(server.get_tcp_socket(), (struct sockaddr *) &client_addr, &addr_size);	// we get client address info from accept; tcp_socket stores file descriptor
 		if (tcp_socket < 0) {
 			cerr << "Error accepting client connection" << endl;
 			continue; // try again
 		}
 
 		// --- Add the new client to the list of connected clients ---
-		server.clients_mutex.lock();
-		server.clients.push_back(tcp_socket);	// store file descriptor which now operates with client
-		server.clients_addresses.insert(make_pair(tcp_socket, client_addr));	// store client address info for server
-		server.clients_mutex.unlock();
+		server.add_tcp_client(tcp_socket, (struct sockaddr *) &client_addr);
 
 		// --- Spawn a new thread to handle this client ---
-		thread t(server.handle_tcp_client, tcp_socket);
-		t.detach();        
+		server.add_thread(tcp_socket);
 
         /*// --- Add the new client to the list of connected clients ---
         clients_mutex.lock();
