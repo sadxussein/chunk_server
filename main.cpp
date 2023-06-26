@@ -1,4 +1,5 @@
 // Only commenting lines which are not selfexplanatory in their mnemonic.
+
 #include "chunk_server.h"
 
 /*void handle_client(int client_socket) {
@@ -30,80 +31,43 @@
     close(client_socket);	// close the client socket
 }*/
 
+/*
+ * 1. Handling arguments passed by admin for server execution, making possibility for creating multiple ports for server
+ * 2. Parsing arguments to port numbers
+ * 3. Creating a pair of sockets, listening both to udp and tcp on parsed ports
+ * 4. Accept new clients in an infinite loop
+ * 5. Accept and add the new TCP client fd to the list of connected TCP clients
+ * 6. Spawn a new thread to handle this TCP client
+ */
 int main(int argc, char* argv[]) {
-    /*// --- Create the server socket ---
-    int server_socket = socket(AF_INET, SOCK_STREAM, 0);	// AF_INET = tpc/ip, SOCK_STREAM = tcp, 0 = protocol will be selected by the system automatically; int here is the file descriptor
-    if (server_socket < 0) {
-        cerr << "Error creating server socket" << endl;
-        return -1;
-    }
-
-    // --- Bind the server socket to a port ---
-    struct sockaddr_in address;
-    memset(&address, 0, sizeof(address));	// zeroing structure
-    address.sin_family = AF_INET;	// still tcp/ip
-    address.sin_addr.s_addr = INADDR_ANY;	// system will decide which address to use
-    address.sin_port = htons(55055);	// htons is important transformation of byte order from Little endian to Big endian
-
-    if (bind(server_socket, (struct sockaddr*) &address, sizeof(address)) < 0) {	// tying socket file descriptor and server local address
-        cerr << "Error binding server socket to port" << endl;
-        return -1;
-    }
-
-    // --- Listen for incoming connections ---
-    if (listen(server_socket, MAX_CLIENTS) < 0) {
-        cerr << "Error listening for incoming connections" << endl;
-        return -1;
-    }*/
-
-	// --- Handling arguments passed by admin for server execution, making possibility for creating multiple ports for server ---
+	// 1. Handling arguments passed by admin for server execution, making possibility for creating multiple ports for server
 	if (argc < 3) {
 		cerr << "Error parsing arguments, should be like 'server tcp_port udp_port'" << endl;
 		return -1;
 	}
 	
-	// --- Parsing arguments to port numbers ---
+	// 2. Parsing arguments to port numbers
 	int tcp_port = atoi(argv[1]);
 	int udp_port = atoi(argv[2]);
 
+	// 3. Creating a pair of sockets, listening both to udp and tcp on parsed ports
 	chunk_server server;
-	if (server.set_socket(SOCK_STREAM, tcp_port) < 0 || server.set_socket(SOCK_DGRAM, udp_port) < 0) {    // init_socket creates sockets, binds them with internal ip and provided port, then starts listening on them
+	if (server.set_socket(SOCK_STREAM, tcp_port) < 0 ||	// set_socket creates sockets, binds them with internal ip and provided port, then starts listening on them, if its TCP
+		server.set_socket(SOCK_DGRAM, udp_port) < 0) {	// if UPD - just binds them
 		return -1;
 	}
 
-    // --- Accept new clients in an infinite loop ---
+    // 4. Accept new clients in an infinite loop
     while (true) {
-        /*// --- Wait for a client to connect ---
-        int client_socket = accept(server_socket, NULL, NULL);	// we don't care about client address information, hence the NULL
-        if (client_socket < 0) {
-            cerr << "Error accepting client connection" << endl;
-            continue; // try again
-        }*/
 		
-		// --- Wait for a client to connect ---
-		struct sockaddr_in client_addr;
-		socklen_t addr_size = sizeof(client_addr);
-		int tcp_socket = accept(server.get_tcp_socket(), (struct sockaddr *) &client_addr, &addr_size);	// we get client address info from accept; tcp_socket stores file descriptor
-		if (tcp_socket < 0) {
-			cerr << "Error accepting client connection" << endl;
-			continue; // try again
+		// 5. Accept and add the new TCP client fd to the list of connected TCP clients; then spawn a thread for this client
+		if (server.accept_tcp_client() < 0) {
+			continue;	// if we fail on one accept we want to restart the loop
 		}
-
-		// --- Add the new client to the list of connected clients ---
-		server.add_tcp_client(tcp_socket, (struct sockaddr *) &client_addr);
-
-		// --- Spawn a new thread to handle this client ---
-		server.add_thread(tcp_socket);
-
-        /*// --- Add the new client to the list of connected clients ---
-        clients_mutex.lock();
-        clients.push_back(client_socket);
-        clients_mutex.unlock();
-
-        // --- Spawn a new thread to handle this client ---
-        thread t(handle_client, client_socket);
-        t.detach();*/
-    }
+		
+		//struct sockaddr_in udp_client_addr;		// UDP client address and other stuff
+		//addr_size = sizeof(udp_client_addr);	// its size
+	}
 	
 	delete &server;
     
