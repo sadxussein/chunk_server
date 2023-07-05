@@ -51,7 +51,7 @@ int Server::set_socket(int type, int port) {
  * add_tcp_client
  * 1. Accepting pending TCP connections
  * 2. Storing info about client
- * 3. Spawn thread for this client
+ * 3. Spawn thread for this client !!!
  */
 int Server::accept_tcp_client() {
 	// 1. Accepting pending TCP connections
@@ -62,22 +62,21 @@ int Server::accept_tcp_client() {
 									  (struct sockaddr *) &tcp_client_addr,
 									  &addr_size);	
 	if (client_tcp_socket_fd < 0) {
-		std::cerr << "Error accepting client connection" << endl;
+		std::cerr << "Error accepting client connection" << std::endl;
 		return -1;
 	}
 
 	// 2. Storing info about client
 	clients_mutex.lock();	// locking other threads from accessing following data
-	clients_tcp_addresses.insert(make_pair(client_tcp_socket_fd, 
-										   &tcp_client_addr));	// store fd and client address info for server
+	clients_tcp_addresses.insert(std::make_pair(client_tcp_socket_fd, 
+												&tcp_client_addr));	// store fd and client address info for server
 	clients_mutex.unlock();	// unlocking data
 	
 	// 3. Spawn thread for this client
-	chunk_server::add_tcp_thread(client_tcp_socket_fd);
+//	add_tcp_thread(client_tcp_socket_fd);
 	
-	return 0;	// if everything is ok
+	return client_tcp_socket_fd;	// if everything is ok return client fd
 }
-
 
 /*
  * get_tcp_socket

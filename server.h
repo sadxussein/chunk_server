@@ -3,7 +3,7 @@
 #include <thread>
 #include <mutex>	// mutual exclusion; provides access to protected and shared resources
 #include <vector>
-#include <unordered_set>
+#include <map>
 #include <string>
 #include <cstring>
 #include <cstdlib>
@@ -22,15 +22,15 @@ class Server {
 public:
 	int get_tcp_socket();
 	int get_udp_socket();
-	int set_socket(int type, int port);						// create socket file descriptor for server of 'type' on 'port'
-	int accept_tcp_client();								// accepting TCP connection from client and storing it
-	virtual void add_tcp_thread(int client_tcp_socket_fd); 	// creating separate thread for client !!!
-	virtual void add_udp_thread();							// creating separate thread for client !!!
+	int set_socket(int type, int port);							// create socket file descriptor for server of 'type' on 'port'
+	int accept_tcp_client();									// accepting TCP connection from client and storing it
+	virtual void add_tcp_thread(int client_tcp_socket_fd) = 0; 	// creating separate thread for client !!!
+	virtual void add_udp_thread() = 0;							// creating separate thread for client !!!
 protected:
-	struct sockaddr_in server_address;								// server socket address structure
-	int server_tcp_socket_fd, server_udp_socket_fd;					// main filedescriptors, which fork into client connections fd's
-	std::unordered_set<int, sockaddr_in*> clients_tcp_addresses;	// here we store TCP fd's with client hints
-	std::mutex clients_mutex;										// thread data separation
+	struct sockaddr_in server_address;					// server socket address structure
+	int server_tcp_socket_fd, server_udp_socket_fd;		// main filedescriptors, which fork into client connections fd's
+	std::map<int, sockaddr_in*> clients_tcp_addresses;	// here we store TCP fd's with client hints
+	std::mutex clients_mutex;							// thread data separation
 private:
 	
 };

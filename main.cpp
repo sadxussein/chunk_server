@@ -32,15 +32,16 @@ int main(int argc, char* argv[]) {
     while (true) {
 		
 		// 5. Accept and add the new TCP client fd to the list of connected TCP clients; then spawn a thread for this client
-		if (server.accept_tcp_client() < 0) {
+		int tcp_client_socket_fd = server.accept_tcp_client();
+		if (tcp_client_socket_fd < 0) {
 			continue;	// if we fail on one accept we want to restart the loop
 		}
-		
+		server.add_tcp_thread(tcp_client_socket_fd);
 		// 6. Create and operate with UDP connection
 		server.add_udp_thread();
 	}
 	
 	delete &server;
-    
+
     return 0;	// ASCII standart requirment
 }

@@ -4,16 +4,6 @@ chunk_server::chunk_server() {
 }
 
 /*
- * add_tcp_thread
- */
-void Server::add_tcp_thread(int client_tcp_socket_fd) override {
-	thread t(&chunk_server::handle_tcp_client,	// pointer to function
-				this, 							// object pointer
-				client_tcp_socket_fd);			// function argument
-	t.detach();									// now function will operate detached from others
-}
-
-/*
  * handle_tcp_client
  * 1. Init buffer for data transmission
  * 2. Read data from the client
@@ -34,7 +24,6 @@ void chunk_server::handle_tcp_client(int client_tcp_socket_fd) {
 							  BUFFER_SIZE,			// its size
 							  0)) > 0) {			// while we are receiving more than zero bytes from client
         cout << "Received: " << buffer << endl;	// printing client data
-		chunk_server::chat.push_back(buffer);	// adding message to chat array
         string response = buffer;
         send(client_tcp_socket_fd,	// client fd
 			 response.c_str(), 		// response
@@ -56,8 +45,6 @@ void chunk_server::handle_tcp_client(int client_tcp_socket_fd) {
     clients_mutex.unlock();								// unlocking data
     close(client_tcp_socket_fd);						// close the client socket
 }
-
-
 
 /*
  * handle_udp_client
