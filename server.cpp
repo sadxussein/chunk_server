@@ -1,5 +1,7 @@
 #include "server.h"
 
+// TODO: add_tcp_client()
+
 /*
  * set_socket
  * 1. Create the server socket file descriptor (fd), it is main descriptor here
@@ -51,7 +53,7 @@ int Server::set_socket(int type, int port) {
  * add_tcp_client
  * 1. Accepting pending TCP connections
  * 2. Storing info about client
- * 3. Spawn thread for this client !!!
+ * 3. TODO: Spawn thread for this client
  */
 int Server::accept_tcp_client() {
 	// 1. Accepting pending TCP connections
@@ -72,7 +74,7 @@ int Server::accept_tcp_client() {
 												&tcp_client_addr));	// store fd and client address info for server
 	clients_mutex.unlock();	// unlocking data
 	
-	// 3. Spawn thread for this client
+	// 3. TODO: Spawn thread for this client
 //	add_tcp_thread(client_tcp_socket_fd);
 	
 	return client_tcp_socket_fd;	// if everything is ok return client fd
@@ -90,4 +92,14 @@ int Server::get_tcp_socket() {
  */
 int Server::get_udp_socket() {
     return server_udp_socket_fd;
+}
+
+void Server::remove_user(int client_tcp_socket_fd) {
+    clients_mutex.lock();	// by locking we make sure that only one thread is able to
+    // execute next command
+    clients_tcp_addresses.erase(client_tcp_socket_fd);	// remove function does not remove elements, only moving
+    // them to the end of the vector; returns iterator which points to first socket element. After that erase
+    // removes elements starting from remove iterator to the end of the vector
+    clients_mutex.unlock();		    // unlocking data
+    close(client_tcp_socket_fd);    // close the client socket
 }

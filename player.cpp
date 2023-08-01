@@ -41,7 +41,7 @@ const char* Player::convert_to_buffer() {
 
 /*
  * get_buffer_length
- * Get buffer lenght for sendto()
+ * Get buffer length for sendto()
  */
 int Player::get_buffer_length() {
 	// Get buffer lenght for sendto()
