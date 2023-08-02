@@ -1,6 +1,6 @@
 // Only commenting lines which are not selfexplanatory in their mnemonic.
 
-#include "Chunk_server.h"
+#include "chunk_server.h"
 #include "login_server.h"
 //#include "game_server.h"
 
@@ -31,6 +31,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    // TODO: finish game server class
 //    Game_server game_server;
 //    if (game_server.set_socket(SOCK_STREAM, game_tcp_port) < 0) {
 //        return -1;

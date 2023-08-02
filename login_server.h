@@ -9,8 +9,11 @@ const std::string USERPASS = "daaad6e5604e8e17bd9f108d91e26afe6281dac8fda0091040
 
 class Login_server: public Server {
 public:
-    void handle_tcp_client(int client_tcp_socket_fd);
-    void add_tcp_thread(int client_tcp_socket_fd) override;
+    Login_server();
+    void handle_tcp_client(int client_tcp_socket_fd) override;
+    void handle_udp_client() override;
+//    void add_tcp_thread(int client_tcp_socket_fd) override;
+    ~Login_server();
 protected:
 private:
 };

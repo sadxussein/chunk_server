@@ -81,6 +81,24 @@ int Server::accept_tcp_client() {
 }
 
 /*
+ * add_tcp_thread
+ * takes overridden tcp handler function and creates separate thread with that
+ */
+void Server::add_tcp_thread(int client_tcp_socket_fd) {
+    std::thread t(&Server::handle_tcp_client, this, client_tcp_socket_fd);
+    t.detach();
+}
+
+/*
+ * add_udp_thread
+ * takes overridden udp handler function and creates separate thread with that
+ */
+void Server::add_udp_thread() {
+    std::thread t(&Server::handle_udp_client, this);
+    t.detach();
+}
+
+/*
  * get_tcp_socket
  */
 int Server::get_tcp_socket() {
@@ -94,12 +112,19 @@ int Server::get_udp_socket() {
     return server_udp_socket_fd;
 }
 
-void Server::remove_user(int client_tcp_socket_fd) {
-    clients_mutex.lock();	// by locking we make sure that only one thread is able to
+/*
+ * remove_user
+ */
+void Server::remove_client(int client_tcp_socket_fd) {
+    // by locking we make sure that only one thread is able to
+    clients_mutex.lock();
     // execute next command
-    clients_tcp_addresses.erase(client_tcp_socket_fd);	// remove function does not remove elements, only moving
+    // remove function does not remove elements, only moving
+    clients_tcp_addresses.erase(client_tcp_socket_fd);
     // them to the end of the vector; returns iterator which points to first socket element. After that erase
     // removes elements starting from remove iterator to the end of the vector
-    clients_mutex.unlock();		    // unlocking data
-    close(client_tcp_socket_fd);    // close the client socket
+    // unlocking data
+    clients_mutex.unlock();
+    // close the client socket
+    close(client_tcp_socket_fd);
 }

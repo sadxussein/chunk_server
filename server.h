@@ -11,6 +11,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
+#include <functional>
 #include <unistd.h>	// posix syscalls
 #include <sys/types.h>	// unix types for syscalls
 #include <sys/socket.h>	// unix sockets
@@ -27,13 +28,13 @@ class Server {
 public:
 	int get_tcp_socket();
 	int get_udp_socket();
-	int set_socket(int type, int port);							// create socket file descriptor for server of 'type' on 'port'
-	int accept_tcp_client();									// accepting TCP connection from client and storing it
-	virtual void add_tcp_thread(int client_tcp_socket_fd) = 0; 	// TODO: creating separate thread for client
-	virtual void add_udp_thread() {                             // TODO: creating separate thread for client
-        std::cout << "No UDP implemented" << std::endl;
-    }
-    void remove_user(int client_tcp_socket_fd);
+	int set_socket(int type, int port);				// create socket file descriptor for server of 'type' on 'port'
+	int accept_tcp_client();						// accepting TCP connection from client and storing it
+	void add_tcp_thread(int client_tcp_socket_fd);  // TODO: creating separate thread for client
+	void add_udp_thread();                          // TODO: creating separate thread for client
+    void remove_client(int client_tcp_socket_fd);
+    virtual void handle_tcp_client(int client_tcp_socket_fd) = 0;
+    virtual void handle_udp_client() = 0;
 protected:
 	struct sockaddr_in server_address;					// server socket address structure
 	int server_tcp_socket_fd, server_udp_socket_fd;		// main filedescriptors, which fork into client connections fd's

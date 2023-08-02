@@ -1,12 +1,15 @@
 #include "login_server.h"
 
+Login_server::Login_server() {}
+
 /*
- * handle_tcp_client
+ * handle_tcp_client override
  * 1. Init buffer for data transmission
  * 2. Read data from the client
  * 3. Validate username and password
- * 4. TODO: Update user status every 5 seconds. If he is not connected - remove user from pool, close connection with him
-      and issue other servers that user went offline
+ * 4. TODO: Update user status every 5 seconds. If he is not connected -
+ *      remove user from pool, close connection with him
+ *      and issue other servers that user went offline
  * TODO: need to work on adding user to player pool
  * 5. An error occurred or the client disconnected
  */
@@ -44,7 +47,8 @@ void Login_server::handle_tcp_client(int client_tcp_socket_fd) {
         response = "Welcome back " + username + "!\n";	// since user is now validated and
     } else {                                            // if incorrect we remove user from pool and close connection
         response = "Please verify if user/password credentials are correct.\n";
-        remove_user(client_tcp_socket_fd);
+        remove_client(client_tcp_socket_fd);
+        // TODO: make logic for restarting login sequence if user doesn't input correct credentials
     }
     std::cout << response << std::endl;
 	send(client_tcp_socket_fd,	// client fd
@@ -54,7 +58,7 @@ void Login_server::handle_tcp_client(int client_tcp_socket_fd) {
          memset(buffer, 0, BUFFER_SIZE); // resetting the buffer with zeroes
 
     // 4. TODO: Update user status every 5 seconds. If he is not connected - remove user from pool, close
-    //    connection with him and issue other servers that user went offline
+    //     connection with him and issue other servers that user went offline
     while ((bytes_read = recv(client_tcp_socket_fd,	// client file descriptor
                               buffer,				// our data buffer
                               BUFFER_SIZE,			// its size
@@ -65,17 +69,30 @@ void Login_server::handle_tcp_client(int client_tcp_socket_fd) {
     // 5. An error occurred or the client disconnected remove him from clients list
     if (bytes_read == 0) {
         std::cout << "Client disconnected" << std::endl;
-        remove_user(client_tcp_socket_fd);
+        remove_client(client_tcp_socket_fd);
     } else {
         std::cerr << "Error receiving data from client" << std::endl;	// standard error output stream
-        remove_user(client_tcp_socket_fd);
+        remove_client(client_tcp_socket_fd);
     }
 }
 
-void Login_server::add_tcp_thread(int client_tcp_socket_fd) {
-    // following lambda construct is required for calling non-static function
-    std::thread t([this, client_tcp_socket_fd]() {	// object pointer and function argument
-        handle_tcp_client(client_tcp_socket_fd);	// pointer to function
-    });
-    t.detach();	// now function will operate detached from others
+
+/*
+ * handle_udp_client override
+ */
+void Login_server::handle_udp_client() {
+    std::cout << "This server class does not support UDP" << std::endl;
+}
+
+// TODO: consider removal
+//void Login_server::add_tcp_thread(int client_tcp_socket_fd) {
+//    // following lambda construct is required for calling non-static function
+//    std::thread t([this, client_tcp_socket_fd]() {	// object pointer and function argument
+//        handle_tcp_client(client_tcp_socket_fd);	// pointer to function
+//    });
+//    t.detach();	// now function will operate detached from others
+//}
+
+Login_server::~Login_server() {
+    close(this->get_tcp_socket());
 }
