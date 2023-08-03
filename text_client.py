@@ -4,10 +4,11 @@ import hashlib
 import threading
 import time
 import msvcrt
+import sys
 
 
 class Server:
-    server_host_ip = '192.168.1.123'
+    server_host_ip = '172.27.191.126'
     login_server_tcp_port = 40000
     game_server_tcp_port = 40001
     chunk_server_tcp_port = 40002
@@ -90,7 +91,6 @@ def movement(sock_udp, sock_tcp):
         # reading one symbol at a time and send it to server
         if msvcrt.kbhit():
             message = msvcrt.getch().decode('utf-8')
-            print((Server.get_server_host_ip(), Server.get_chunk_server_udp_port()))
             remote = (Server.get_server_host_ip(), Server.get_chunk_server_udp_port())
             sock_udp.sendto(message.encode(), remote)
             # temporarily reading data from server

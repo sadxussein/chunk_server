@@ -39,10 +39,10 @@ void Chunk_server::handle_tcp_client(int client_tcp_socket_fd) {
     }
 
     // 4. Remove the client from the list of connected clients
-    clients_mutex.lock();								// by locking we make sure that only one thread is able to execute next command
-    clients_tcp_addresses.erase(client_tcp_socket_fd);	// remove function does not remove elements, only moving them to the end of the vector; returns iterator which points to first socket element. After that erase removes elements starting from remove iterator to the end of the vector
-    clients_mutex.unlock();								// unlocking data
-    close(client_tcp_socket_fd);						// close the client socket
+    mtx.lock();								// by locking we make sure that only one thread is able to execute next command
+    clients.erase(client_tcp_socket_fd);	// remove function does not remove elements, only moving them to the end of the vector; returns iterator which points to first socket element. After that erase removes elements starting from remove iterator to the end of the vector
+    mtx.unlock();							// unlocking data
+    close(client_tcp_socket_fd);			// close the client socket
 }
 
 /*
@@ -58,7 +58,7 @@ void Chunk_server::handle_udp_client() {
     memset(buffer, 0, BUFFER_SIZE);	// filling buffer with zeroes, we dont need memory trash in there	
 	struct sockaddr_in udp_client_addr;		// UDP client address and other stuff
 	socklen_t addr_len = sizeof(udp_client_addr);	// its size	
-	Player P; // our player instance
+	Character P; // our player instance
 	
 	// 2. Read data from the client and send it back
 	int bytes_read = 0;	
@@ -93,27 +93,6 @@ void Chunk_server::handle_udp_client() {
         std::cerr << "Error receiving data from client" << std::endl;	// standart error output stream
     }
 }
-
-/*
- * add_tcp_thread
- * TODO: consider removal
- */
-//void add_tcp_thread(int client_tcp_socket_fd) override {
-//    // following lambda construct is required for calling non-static function
-//    std::thread t([this, client_tcp_socket_fd]() {		// object pointer and function argument
-//        handle_tcp_client(client_tcp_socket_fd);	// pointer to function
-//    });
-//    t.detach();	// now function will operate detached from others
-//}
-
-/*
- * add_udp_thread
- * TODO: consider removal
- */
-//void add_udp_thread() override {
-//    std::thread t([this]() { handle_udp_client(); });	// pointer to function
-//    t.detach();										    // now function will operate detached from others
-//}
 
 Chunk_server::~Chunk_server() {
 	close(this->get_tcp_socket());

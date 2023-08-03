@@ -1,7 +1,5 @@
 #include "server.h"
 
-// TODO: add_tcp_client()
-
 /*
  * set_socket
  * 1. Create the server socket file descriptor (fd), it is main descriptor here
@@ -53,31 +51,30 @@ int Server::set_socket(int type, int port) {
  * add_tcp_client
  * 1. Accepting pending TCP connections
  * 2. Storing info about client
- * 3. TODO: Spawn thread for this client
  */
 int Server::accept_tcp_client() {
-	// 1. Accepting pending TCP connections
-	socklen_t addr_size;
-	struct sockaddr_in tcp_client_addr;		// TCP client address and other stuff
-	addr_size = sizeof(tcp_client_addr);	// its size
-	int client_tcp_socket_fd = accept(this->get_tcp_socket(),	// we get client address info from accept; client_tcp_socket_fd stores file descriptor
-									  (struct sockaddr *) &tcp_client_addr,
-									  &addr_size);	
-	if (client_tcp_socket_fd < 0) {
+	// 1. Accepting pending TCP
+    Client client;
+//	socklen_t addr_size;
+//	struct sockaddr_in tcp_client_addr;		// TCP client address and other stuff
+//	addr_size = sizeof(tcp_client_addr);	// its size
+    client.tcp_socket_fd = accept(this->get_tcp_socket(),
+                                  (struct sockaddr *) &client.addr,
+                                  &client.addr_size);
+//	int client_tcp_socket_fd = accept(this->get_tcp_socket(),	// we get client address info from accept; client_tcp_socket_fd stores file descriptor
+//									  (struct sockaddr *) &tcp_client_addr,
+//									  &addr_size);
+	if (client.tcp_socket_fd < 0) {
 		std::cerr << "Error accepting client connection" << std::endl;
 		return -1;
 	}
 
 	// 2. Storing info about client
-	clients_mutex.lock();	// locking other threads from accessing following data
-	clients_tcp_addresses.insert(std::make_pair(client_tcp_socket_fd, 
-												&tcp_client_addr));	// store fd and client address info for server
-	clients_mutex.unlock();	// unlocking data
+	mtx.lock();	    // locking other threads from accessing following data
+	clients.insert(std::make_pair(client.tcp_socket_fd, client));	// store fd and client address info for server
+	mtx.unlock();	// unlocking data
 	
-	// 3. TODO: Spawn thread for this client
-//	add_tcp_thread(client_tcp_socket_fd);
-	
-	return client_tcp_socket_fd;	// if everything is ok return client fd
+	return client.tcp_socket_fd;	// if everything is ok return client fd
 }
 
 /*
@@ -101,14 +98,14 @@ void Server::add_udp_thread() {
 /*
  * get_tcp_socket
  */
-int Server::get_tcp_socket() {
+int Server::get_tcp_socket() const {
     return server_tcp_socket_fd;
 }
 
 /*
  * get_udp_socket
  */
-int Server::get_udp_socket() {
+int Server::get_udp_socket() const {
     return server_udp_socket_fd;
 }
 
@@ -117,14 +114,42 @@ int Server::get_udp_socket() {
  */
 void Server::remove_client(int client_tcp_socket_fd) {
     // by locking we make sure that only one thread is able to
-    clients_mutex.lock();
+    mtx.lock();
     // execute next command
     // remove function does not remove elements, only moving
-    clients_tcp_addresses.erase(client_tcp_socket_fd);
+    clients.erase(client_tcp_socket_fd);
     // them to the end of the vector; returns iterator which points to first socket element. After that erase
     // removes elements starting from remove iterator to the end of the vector
     // unlocking data
-    clients_mutex.unlock();
+    mtx.unlock();
     // close the client socket
     close(client_tcp_socket_fd);
+}
+
+/*
+ * postgres_connect
+ * just opening connection not closing it
+ * between connect and disconnect functions subclass will override postgres handler
+ * TODO: complete postgres connection
+ */
+int Server::postgres_connect() {
+    try {
+        connect = new pqxx::connection("dbname=mmorpg user=postgres password=qwerty123 hostaddr=127.0.0.1 port=5432");
+        if (!connect->is_open()) {
+            std::cerr << "Could not connect to database" << std::endl;
+            return -1;
+        }
+        return 0;
+    } catch (const std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        return -1;
+    }
+}
+
+/*
+ * postgres_disconnect
+ * only closing connection
+ */
+void Server::postgres_disconnect() {
+    delete connect;
 }

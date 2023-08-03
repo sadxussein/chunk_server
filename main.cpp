@@ -2,7 +2,7 @@
 
 #include "chunk_server.h"
 #include "login_server.h"
-//#include "game_server.h"
+#include "game_server.h"
 
 /*
  * 1. Handling arguments passed by admin for server execution, making possibility for creating multiple ports for server
@@ -32,10 +32,10 @@ int main(int argc, char* argv[]) {
     }
 
     // TODO: finish game server class
-//    Game_server game_server;
-//    if (game_server.set_socket(SOCK_STREAM, game_tcp_port) < 0) {
-//        return -1;
-//    }
+    Game_server game_server;
+    if (game_server.set_socket(SOCK_STREAM, game_tcp_port) < 0) {
+        return -1;
+    }
 
 	Chunk_server chunk_server;
 	if (chunk_server.set_socket(SOCK_STREAM, chunk_tcp_port) < 0 ||	// set_socket creates sockets, binds them with internal ip and provided port, then starts listening on them, if its TCP

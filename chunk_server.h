@@ -2,7 +2,6 @@
 #define CHUNK_SERVER_H
 
 #include "server.h"
-#include "player.h"
 
 class Chunk_server : public Server{
 public:
