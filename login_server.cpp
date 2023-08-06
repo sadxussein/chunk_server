@@ -5,6 +5,31 @@ Login_server::Login_server() {
 }
 
 /*
+ * accept_tcp_client
+ * 1. Accept pending initial TCP connection
+ * 2. Storing info about client
+ */
+int Login_server::accept_tcp_client(std::map<Client_fd_pool, Client> &client_pool_ptr, Client_fd_pool &client_fd_pool) {
+    // 1. Accept pending initial TCP connection
+    Client client;      // since user is not yet present in the system create one
+    client.fdPool.login_tcp_fd = accept(this->get_tcp_socket(),
+                                       (struct sockaddr *) &client.addr,
+                                       &client.addr_size);
+    if (client.fdPool.login_tcp_fd < 0) {
+        std::cerr << "Error accepting client connection" << std::endl;
+        return -1;
+    }
+
+    // 2. Storing info about client
+    mtx.lock();	    // locking other threads from accessing following data
+    client_fd_pool = client.fdPool;
+    client_pool_ptr.insert(std::make_pair(client.fdPool, client));
+    mtx.unlock();	// unlocking data
+
+    return client_fd_pool.login_tcp_fd;	// if everything is ok return client fd
+}
+
+/*
  * handle_tcp_client override
  * 1. Init buffer for data transmission
  * 2. Read data from the client
@@ -30,11 +55,10 @@ void Login_server::handle_tcp_client(int client_tcp_socket_fd) {
     std::string userpass;
     ssize_t bytes_read = 0;	// type used for size representation of buffer/array size
 	size_t lines_count = 0;	// line count, since we need only name/userpass we will not have more than two
-	while (lines_count < 2 &&                       // while we dont get more than two lines
-           (bytes_read = recv(client_tcp_socket_fd, // client file descriptor
-							  buffer,               // our data buffer
-							  BUFFER_SIZE,          // its size
-							  0)) > 0) {            // while we are receiving more than zero bytes from client
+    // 2 lines from client - username and password
+	while (lines_count < 2) {
+        recv(client_tcp_socket_fd, buffer,  BUFFER_SIZE, 0);
+        std::cout << bytes_read << " " << lines_count << " " << client_tcp_socket_fd << std::endl;
 		if (lines_count == 0) {         // reading user name
             std::cout << "Received user name: " << buffer << std::endl;
             username = buffer;
@@ -121,3 +145,5 @@ void Login_server::handle_udp_client() {
 Login_server::~Login_server() {
     close(this->get_tcp_socket());
 }
+
+

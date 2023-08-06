@@ -48,36 +48,6 @@ int Server::set_socket(int type, int port) {
 }
 
 /*
- * add_tcp_client
- * 1. Accepting pending TCP connections
- * 2. Storing info about client
- */
-int Server::accept_tcp_client() {
-	// 1. Accepting pending TCP
-    Client client;
-//	socklen_t addr_size;
-//	struct sockaddr_in tcp_client_addr;		// TCP client address and other stuff
-//	addr_size = sizeof(tcp_client_addr);	// its size
-    client.tcp_socket_fd = accept(this->get_tcp_socket(),
-                                  (struct sockaddr *) &client.addr,
-                                  &client.addr_size);
-//	int client_tcp_socket_fd = accept(this->get_tcp_socket(),	// we get client address info from accept; client_tcp_socket_fd stores file descriptor
-//									  (struct sockaddr *) &tcp_client_addr,
-//									  &addr_size);
-	if (client.tcp_socket_fd < 0) {
-		std::cerr << "Error accepting client connection" << std::endl;
-		return -1;
-	}
-
-	// 2. Storing info about client
-	mtx.lock();	    // locking other threads from accessing following data
-	clients.insert(std::make_pair(client.tcp_socket_fd, client));	// store fd and client address info for server
-	mtx.unlock();	// unlocking data
-	
-	return client.tcp_socket_fd;	// if everything is ok return client fd
-}
-
-/*
  * add_tcp_thread
  * takes overridden tcp handler function and creates separate thread with that
  */

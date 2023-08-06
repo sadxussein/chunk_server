@@ -1,6 +1,30 @@
 #include "chunk_server.h"
 
-Chunk_server::Chunk_server() {}
+/*
+ * accept_tcp_client
+ * 1. Accept pending TCP connection
+ * 2. Storing info about client
+ */
+int Chunk_server::accept_tcp_client(std::map<Client_fd_pool, Client> &client_pool_ptr, Client_fd_pool &client_fd_pool) {
+    // 1. Accept pending TCP connection
+    auto client = client_pool_ptr.find(client_fd_pool);
+    client->second.fdPool.chunk_tcp_fd = accept(this->get_tcp_socket(),
+                                               (struct sockaddr *) &client->second.addr,
+                                               &client->second.addr_size);
+    if (client->second.fdPool.chunk_tcp_fd < 0) {
+        std::cerr << "Error accepting client connection" << std::endl;
+        return -1;
+    }
+
+    // 2. Storing info about client
+    mtx.lock();	    // locking other threads from accessing following data
+    // store new fd's and client address info for server
+    client_pool_ptr.insert(std::make_pair(client->second.fdPool, client->second));
+    client_fd_pool.chunk_tcp_fd = client->second.fdPool.chunk_tcp_fd;
+    mtx.unlock();	// unlocking data
+
+    return client_fd_pool.chunk_tcp_fd;	// if everything is ok return client fd
+}
 
 /*
  * handle_tcp_client
@@ -70,11 +94,11 @@ void Chunk_server::handle_udp_client() {
 								 &addr_len)) > 0) {		// while we are receiving more than zero bytes from client
         
 		// 3. Processing user data and sending it back (our game logic) !!! needs to be fixed, data somehow jumps between threads
-		for (int i=0; i<1500; i++) {
-			if (buffer[i] == 'w') P.update_position(1, 0, 0);
-			if (buffer[i] == 's') P.update_position(-1, 0, 0);
-			if (buffer[i] == 'a') P.update_position(0, -1, 0);
-			if (buffer[i] == 'd') P.update_position(0, 1, 0);
+		for (char i : buffer) {
+			if (i == 'w') P.update_position(1, 0, 0);
+			if (i == 's') P.update_position(-1, 0, 0);
+			if (i == 'a') P.update_position(0, -1, 0);
+			if (i == 'd') P.update_position(0, 1, 0);
 		}
 		P.show_position();	// printing players location in server terminal
         sendto(this->get_udp_socket(),	// send a response to the client; args are the same as in recvfrom, except addr_len is not pointer

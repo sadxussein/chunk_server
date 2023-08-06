@@ -56,6 +56,12 @@ def login(sock):
     else:
         login(sock)
 
+def game(sock):
+    character = input("Please enter character index: ")
+    sock.send(character.encode())
+    response = sock.recv(1500).decode()
+    print(response)
+
 
 # ping server every 5 seconds
 def heartbeat(sock):
@@ -107,7 +113,8 @@ def movement(sock_udp, sock_tcp):
 
 
 # 1. Connect to login server and check credentials
-# 2. Main loop, after login, chunk operates user movement and chat
+# 2. Connect to game server to pick character
+# 3. Main loop, after login, chunk operates user movement and chat
 # 3. Close all connections
 
 
@@ -126,14 +133,20 @@ if __name__ == '__main__':
     login_socket.connect(login_tcp_connection)
     login(login_socket)
 
-    # 2. Main loop, after login, chunk operates user movement and chat
+    # 2. Connect to game server to pick character
+    game_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    game_tcp_connection = (Server.get_server_host_ip(), Server.get_game_server_tcp_port())
+    game_socket.connect(game_tcp_connection)
+    game(game_socket)
+
+    # 3. Main loop, after login, chunk operates user movement and chat
     chunk_socket_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     chunk_tcp_connection = (Server.get_server_host_ip(), Server.get_chunk_server_tcp_port())
     chunk_socket_tcp.connect(chunk_tcp_connection)
     chunk_socket_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     chunk(chunk_socket_udp, chunk_socket_tcp)
 
-    # 3. Close all connections
+    # 4. Close all connections
     # login_socket.close()
     # chunk_socket_tcp.close()
     # chunk_socket_udp.close()
