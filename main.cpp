@@ -32,57 +32,71 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    // TODO: finish game server class
     Game_server game_server;
     if (game_server.set_socket(SOCK_STREAM, game_tcp_port) < 0) {
         return -1;
     }
 
+    // TODO: multiple chunks required
 	Chunk_server chunk_server;
 	if (chunk_server.set_socket(SOCK_STREAM, chunk_tcp_port) < 0 ||	// set_socket creates sockets, binds them with internal ip and provided port, then starts listening on them, if its TCP
 		chunk_server.set_socket(SOCK_DGRAM, chunk_udp_port) < 0) {	// if UPD - just binds them
 		return -1;
 	}
 
-    std::map<Client_fd_pool, Client> client_pool;
+    std::unordered_map<int, Client> client_pool;
 
     // 4. Accept new clients in an infinite loop TODO: make login threads, at this point we can have only 1 login attempt
     while (true) {
         // 5. Accept login client
-        Client_fd_pool client_fd_pool;
-        if (login_server.accept_tcp_client(client_pool, client_fd_pool) < 0) {
+        int client_login_tcp_fd = login_server.accept_tcp_client(client_pool, 0);
+        if (client_login_tcp_fd < 0) {
             std::cerr << "Login socket error" << std::endl;
             continue;   // if we fail on one accept we want to restart the loop
         }
-        // TODO: remove DEBUG
-        for (const auto& c: client_pool) {
-            std::cout << "client login tcp fd: " << c.first.login_tcp_fd << ' ' << c.second.fdPool.login_tcp_fd << std::endl;
-            std::cout << "client chunk fd: " << c.first.chunk_tcp_fd << ' ' << c.second.fdPool.chunk_tcp_fd << std::endl;
-            std::cout << "client game fd: " << c.first.game_tcp_fd << ' ' << c.second.fdPool.game_tcp_fd << std::endl;
-            std::cout << "IP/port: " << inet_ntoa(c.second.addr.sin_addr) << ' ' << c.second.addr.sin_port << std::endl;
-        }
-        // DEBUG end
-        login_server.add_tcp_thread(client_fd_pool.login_tcp_fd);
+        std::cout << "Accepted login client" << std::endl;
+        login_server.add_tcp_thread(client_pool, client_login_tcp_fd);
         std::cout << "Created login thread" << std::endl;
+        for (const auto& c: client_pool) {
+            std::cout << c.first << " client login tcp fd: " << c.second.fd_pool.login_tcp_fd << ' '
+                      << "client chunk fd: " << c.second.fd_pool.chunk_tcp_fd << ' '
+                      << "client game fd: " << c.second.fd_pool.game_tcp_fd << std::endl;
+            std::cout << "IP/port: " << inet_ntoa(c.second.addr_pool.login_tcp_addr.sin_addr)
+                      << ' ' << c.second.addr_pool.login_tcp_addr.sin_port << std::endl;
+        }
 
-        if (game_server.accept_tcp_client(client_pool, client_fd_pool) < 0) {
+        if (game_server.accept_tcp_client(client_pool, client_login_tcp_fd) < 0) {
             std::cerr << "Game socket error" << std::endl;
             continue;       // TODO: ???
         }
         std::cout << "Accepted game client" << std::endl;
-        game_server.add_tcp_thread(client_fd_pool.game_tcp_fd);
+        game_server.add_tcp_thread(client_pool, client_login_tcp_fd);
         std::cout << "Created game thread" << std::endl;
+        for (const auto& c: client_pool) {
+            std::cout << c.first << " client login tcp fd: " << c.second.fd_pool.login_tcp_fd << ' '
+                      << "client chunk fd: " << c.second.fd_pool.chunk_tcp_fd << ' '
+                      << "client game fd: " << c.second.fd_pool.game_tcp_fd << std::endl;
+            std::cout << "IP/port: " << inet_ntoa(c.second.addr_pool.game_tcp_addr.sin_addr)
+                      << ' ' << c.second.addr_pool.game_tcp_addr.sin_port << std::endl;
+        }
 
 		// 5. Accept and add the new TCP client fd to the list of connected TCP clients; then spawn a thread for this client
-		if (chunk_server.accept_tcp_client(client_pool, client_fd_pool) < 0) {
+		if (chunk_server.accept_tcp_client(client_pool, client_login_tcp_fd) < 0) {
             std::cerr << "Chunk socket error" << std::endl;
 			continue;	// if we fail on one accept we want to restart the loop
 		}
         std::cout << "Accepted chunk client" << std::endl;
-		chunk_server.add_tcp_thread(client_fd_pool.chunk_tcp_fd);
+		chunk_server.add_tcp_thread(client_pool, client_login_tcp_fd);
 		// 6. Create and operate with UDP connection
-		chunk_server.add_udp_thread();
+        chunk_server.add_udp_thread(client_pool, client_login_tcp_fd);
         std::cout << "Created chunk threads" << std::endl;
+        for (const auto& c: client_pool) {
+            std::cout << c.first << " client login tcp fd: " << c.second.fd_pool.login_tcp_fd << ' '
+                      << "client chunk fd: " << c.second.fd_pool.chunk_tcp_fd << ' '
+                      << "client game fd: " << c.second.fd_pool.game_tcp_fd << std::endl;
+            std::cout << "IP/port: " << inet_ntoa(c.second.addr_pool.chunk_tcp_addr.sin_addr)
+                      << ' ' << c.second.addr_pool.chunk_tcp_addr.sin_port << std::endl;
+        }
 	}
 	
 	delete &chunk_server;

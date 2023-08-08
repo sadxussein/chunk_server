@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <thread>
 #include <vector>
-#include <map>
 #include <mutex>	    // mutual exclusion; provides access to protected and shared resources
 #include <string>
 #include <cstring>
@@ -18,6 +17,7 @@
 #include <sys/socket.h>	// unix sockets
 #include <netinet/in.h>	// unix types for network
 #include <arpa/inet.h>  // TODO: temp
+#include <unordered_map>
 
 #include "client.h"
 
@@ -31,15 +31,14 @@ public:
 	int get_udp_socket() const;
 	int set_socket(int type, int port);				// create socket file descriptor for server of 'type' on 'port'
     // accepting TCP connection from client and storing it
-    virtual int
-    accept_tcp_client(std::map<Client_fd_pool, Client> &clients_pool_ptr, Client_fd_pool &client_fd_pool) = 0;
-	void add_tcp_thread(int client_tcp_socket_fd);  // creating separate thread for client
-	void add_udp_thread();
+    virtual int accept_tcp_client(std::unordered_map<int, Client> &clients_pool_ptr, int client_fd) = 0;
+	void add_tcp_thread(std::unordered_map<int, Client> &client_pool_ptr, int client_fd);  // creating separate thread for client
+	void add_udp_thread(std::unordered_map<int, Client> &client_pool_ptr, int client_fd);
     void remove_client(int client_tcp_socket_fd);   // remove client from map
     int postgres_connect();
     void postgres_disconnect();
-    virtual void handle_tcp_client(int client_tcp_socket_fd) = 0;
-    virtual void handle_udp_client() = 0;
+    virtual void handle_tcp_client(std::unordered_map<int, Client> &client_pool_ptr, int client_fd) = 0;
+    virtual void handle_udp_client(std::unordered_map<int, Client> &client_pool_ptr, int client_fd) = 0;
 protected:
 	struct sockaddr_in server_address;					// server socket address structure
 	int server_tcp_socket_fd, server_udp_socket_fd;	    // main filedescriptors, which fork into client connections fd's

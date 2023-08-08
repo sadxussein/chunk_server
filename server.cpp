@@ -1,3 +1,4 @@
+#include <unordered_map>
 #include "server.h"
 
 /*
@@ -51,8 +52,8 @@ int Server::set_socket(int type, int port) {
  * add_tcp_thread
  * takes overridden tcp handler function and creates separate thread with that
  */
-void Server::add_tcp_thread(int client_tcp_socket_fd) {
-    std::thread t(&Server::handle_tcp_client, this, client_tcp_socket_fd);
+void Server::add_tcp_thread(std::unordered_map<int, Client> &client_pool_ptr, int client_fd) {
+    std::thread t(&Server::handle_tcp_client, this, std::ref(client_pool_ptr), client_fd);
     t.detach();
 }
 
@@ -60,8 +61,8 @@ void Server::add_tcp_thread(int client_tcp_socket_fd) {
  * add_udp_thread
  * takes overridden udp handler function and creates separate thread with that
  */
-void Server::add_udp_thread() {
-    std::thread t(&Server::handle_udp_client, this);
+void Server::add_udp_thread(std::unordered_map<int, Client> &client_pool_ptr, int client_fd) {
+    std::thread t(&Server::handle_udp_client, this, std::ref(client_pool_ptr), client_fd);
     t.detach();
 }
 

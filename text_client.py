@@ -4,7 +4,6 @@ import hashlib
 import threading
 import time
 import msvcrt
-import sys
 
 
 class Server:
@@ -56,17 +55,28 @@ def login(sock):
     else:
         login(sock)
 
+
 def game(sock):
-    character = input("Please enter character index: ")
-    sock.send(character.encode())
-    response = sock.recv(1500).decode()
-    print(response)
+    # get your characters list
+    print(sock.recv(1500).decode())
+    # send character index you want to plat
+    # TODO: user input validation required, only int
+    #   and only from character pool sent by the server
+    character = int(input("Please enter character index: "))
+    print(str(character).encode())      # TODO: remove test line
+    sock.send(str(character).encode())
+    # get response about your character
+    print(sock.recv(1500).decode())
+    print(sock.recv(1500).decode())
 
 
 # ping server every 5 seconds
 def heartbeat(sock):
+    i = 0   # TODO: remove debug line
     while True:
         sock.send("1".encode())
+        print("heartbeat", i)   # TODO: remove debug line
+        i += 1                  # TODO: remove debug line
         time.sleep(5)
 
 
